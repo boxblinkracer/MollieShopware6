@@ -152,7 +152,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+<<<<<<< HEAD
         shopware: [ '6.4.4.0', '6.4.3.1', '6.4.3.0', '6.4.2.1', '6.4.1.2', '6.4.0.0', '6.3.5.4', '6.3.5.2' ]
+=======
+        shopware: [ '6.3.5.2', '6.3.0' ]
+>>>>>>> add better lots + showpare 6.3.0
     steps:
 
       - name: Clone Code
@@ -209,6 +213,14 @@ jobs:
         run: cd tests/Cypress && make run shopware=$SW_VERSION url=http://local.mollie.shop
         env:
           SW_VERSION: ${{ matrix.shopware }}
+
+      - name: Download Logs
+        if: ${{ always() }}
+        run: |
+          mkdir -p $(pwd)/tests/Cypress/cypress/logs/shopware
+          mkdir -p $(pwd)/tests/Cypress/cypress/logs/apache
+          docker cp shop:/var/www/html/var/log/. $(pwd)/tests/Cypress/cypress/logs/shopware
+          docker cp shop:/var/log/php/. $(pwd)/tests/Cypress/cypress/logs/apache
 
       - name: Download Logs
         if: ${{ always() }}
