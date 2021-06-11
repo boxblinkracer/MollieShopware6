@@ -7,7 +7,6 @@ use Kiener\MolliePayments\Handler\Method\BanContactPayment;
 use Kiener\MolliePayments\Handler\Method\BankTransferPayment;
 use Kiener\MolliePayments\Handler\Method\BelfiusPayment;
 use Kiener\MolliePayments\Handler\Method\CreditCardPayment;
-use Kiener\MolliePayments\Handler\Method\DirectDebitPayment;
 use Kiener\MolliePayments\Handler\Method\EpsPayment;
 use Kiener\MolliePayments\Handler\Method\GiftCardPayment;
 use Kiener\MolliePayments\Handler\Method\GiroPayPayment;
@@ -24,11 +23,12 @@ use Mollie\Api\Exceptions\ApiException;
 use Mollie\Api\MollieApiClient;
 use Mollie\Api\Resources\Method;
 use Mollie\Api\Resources\MethodCollection;
+use Mollie\Api\Resources\Order;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Payment\PaymentMethodEntity;
 use Shopware\Core\Content\Media\MediaCollection;
 use Shopware\Core\Content\Media\MediaService;
 use Shopware\Core\Framework\Context;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Event\EntityWrittenContainerEvent;
 use Shopware\Core\Framework\DataAbstractionLayer\Exception\InconsistentCriteriaIdsException;
@@ -190,9 +190,6 @@ class PaymentMethodService
                 /** @var string|null $paymentMethodId */
                 $paymentMethodId = $this->getPaymentMethodId($handler['class'], $handler['name']);
 
-                /** @var PaymentMethodEntity $paymentMethod */
-                $paymentMethod = null;
-
                 if ((string) $paymentMethodId !== '') {
                     $this->activatePaymentMethod($paymentMethodId, true, $context);
                 }
@@ -215,10 +212,14 @@ class PaymentMethodService
         Context $context = null
     ): EntityWrittenContainerEvent
     {
-        return $this->paymentRepository->upsert([[
-            'id' => $paymentMethodId,
-            'active' => $active
-        ]], $context ?? Context::createDefaultContext());
+        return $this->paymentRepository->upsert(
+            [
+                [
+                    'id' => $paymentMethodId,
+                    'active' => $active
+                ]
+            ],
+            $context ?? Context::createDefaultContext());
     }
 
     /**
@@ -334,9 +335,6 @@ class PaymentMethodService
      */
     private function getMediaId(array $paymentMethod, Context $context): string
     {
-        /** @var string $mediaId */
-        $mediaId = '';
-
         /** @var string $fileName */
         $fileName = $paymentMethod['name'] . '-icon';
 
@@ -347,33 +345,46 @@ class PaymentMethodService
         $icons = $this->mediaRepository->search($criteria, $context);
 
         if ($icons->count() && $icons->first() !== null) {
-            $mediaId = $icons->first()->getId();
-        } else {
-            // Add icon to the media library
-
-            $iconBlob = file_get_contents('https://www.mollie.com/external/icons/payment-methods/' . $paymentMethod['name'] . '.svg');
-
-            if(!empty(trim($iconBlob))) {
-                $iconMime = 'image/svg+xml';
-                $iconExt = 'svg';
-            } else {
-                $iconBlob = file_get_contents('https://www.mollie.com/external/icons/payment-methods/' . $paymentMethod['name'] . '.png');
-                $iconMime = 'image/png';
-                $iconExt = 'png';
-            }
-
-            $mediaId = $this->mediaService->saveFile(
-                $iconBlob,
-                $iconExt,
-                $iconMime,
-                $fileName,
-                $context,
-                'Mollie Payments - Icons',
-                null,
-                false
-            );
+            return $icons->first()->getId();
         }
 
-        return $mediaId;
+        // Add icon to the media library
+        $iconMime = 'image/svg+xml';
+        $iconExt = 'svg';
+        $iconBlob = file_get_contents('https://www.mollie.com/external/icons/payment-methods/' . $paymentMethod['name'] . '.svg');
+
+        if(empty(trim($iconBlob))) {
+            $iconBlob = file_get_contents('https://www.mollie.com/external/icons/payment-methods/' . $paymentMethod['name'] . '.png');
+            $iconMime = 'image/png';
+            $iconExt = 'png';
+        }
+
+        return $this->mediaService->saveFile(
+            $iconBlob,
+            $iconExt,
+            $iconMime,
+            $fileName,
+            $context,
+            'Mollie Payments - Icons',
+            null,
+            false
+        );
+    }
+
+    /**
+     * @param OrderTransactionEntity $transaction
+     * @param Order $mollieOrder
+     * @return bool
+     */
+    public function isPaidApplePayTransaction(OrderTransactionEntity $transaction, Order $mollieOrder) : bool {
+        $paymentMethodId = $transaction->getPaymentMethodId();
+        $paymentMethod = $transaction->getPaymentMethod();
+
+        if(!$paymentMethod instanceof PaymentMethodEntity) {
+            $criteria = new Criteria([$paymentMethodId]);
+            $paymentMethod = $this->paymentRepository->search($criteria, Context::createDefaultContext())->first();
+        }
+
+        return $paymentMethod->getHandlerIdentifier() === ApplePayPayment::class && $mollieOrder->isPaid() === true;
     }
 }

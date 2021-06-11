@@ -40,6 +40,7 @@ use Shopware\Core\System\SalesChannel\Context\SalesChannelContextService;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Storefront\Controller\StorefrontController;
 use Shopware\Storefront\Framework\Routing\Router;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
@@ -73,15 +74,21 @@ class ApplePayDirectController extends StorefrontController
     /** @var RouterInterface */
     private $router;
 
-    /** @var SalesChannelContextFactory */
-    private $salesChannelContextFactory;
-
     /** @var SettingsService */
     private $settingsService;
 
     /** @var ShippingMethodService */
     private $shippingMethodService;
 
+    /** @var string */
+    private $shopwareVersion;
+
+    /** @var SalesChannelContextFactory */
+    private $salesChannelContextFactory;
+
+    /**
+     * @param SalesChannelContextFactory $salesChannelContextFactory
+     */
     public function __construct(
         MollieApiClient $apiClient,
         CartService $cartService,
@@ -92,9 +99,11 @@ class ApplePayDirectController extends StorefrontController
         EntityRepositoryInterface $paymentMethodRepository,
         ProductService $productService,
         Router $router,
-        SalesChannelContextFactory $salesChannelContextFactory,
         SettingsService $settingsService,
-        ShippingMethodService $shippingMethodService
+        ShippingMethodService $shippingMethodService,
+        ContainerInterface $container,
+        string $shopwareVersion,
+        $salesChannelContextfactory
     )
     {
         $this->apiClient = $apiClient;
@@ -106,9 +115,11 @@ class ApplePayDirectController extends StorefrontController
         $this->paymentMethodRepository = $paymentMethodRepository;
         $this->productService = $productService;
         $this->router = $router;
-        $this->salesChannelContextFactory = $salesChannelContextFactory;
         $this->settingsService = $settingsService;
         $this->shippingMethodService = $shippingMethodService;
+        $this->container = $container;
+        $this->shopwareVersion = $shopwareVersion;
+        $this->salesChannelContextFactory = $salesChannelContextfactory;
     }
 
     /**
@@ -460,7 +471,8 @@ class ApplePayDirectController extends StorefrontController
                 $this->customerService->getCountryId($countryCode, $context->getContext()),
                 null,
                 null,
-                null
+                null,
+                $context->getContext()->getLanguageId()
             );
         } else {
             $newSalesChannelContext = $context;
@@ -558,7 +570,8 @@ class ApplePayDirectController extends StorefrontController
                 $customer->getDefaultShippingAddress() !== null ? $customer->getDefaultShippingAddress()->getCountryId() : null,
                 $customer->getId(),
                 $customer->getDefaultPaymentMethod() !== null ? $customer->getDefaultPaymentMethod()->getId() : null,
-                $shippingMethodId
+                $shippingMethodId,
+                $context->getContext()->getLanguageId()
             );
 
             // Persist the order
@@ -649,6 +662,9 @@ class ApplePayDirectController extends StorefrontController
             ) {
                 return $paymentMethods->first();
             }
+
+            return null;
+
         } catch (Exception $e) {
             return null;
         }
@@ -697,7 +713,8 @@ class ApplePayDirectController extends StorefrontController
         ?string $countryId,
         ?string $customerId,
         ?string $paymentMethodId = null,
-        ?string $shippingMethodId = null
+        ?string $shippingMethodId = null,
+        ?string $languageId = null
     ): SalesChannelContext
     {
         /** @var array $options */
@@ -714,13 +731,18 @@ class ApplePayDirectController extends StorefrontController
         }
 
         // Add payment method to options
-        if ((string) $paymentMethodId !== '') {
+        if ((string)$paymentMethodId !== '') {
             $options[SalesChannelContextService::PAYMENT_METHOD_ID] = $paymentMethodId;
         }
 
         // Add shipping method to options
-        if ((string) $shippingMethodId !== '') {
+        if ((string)$shippingMethodId !== '') {
             $options[SalesChannelContextService::SHIPPING_METHOD_ID] = $shippingMethodId;
+        }
+
+        // Add language to options
+        if ((string) $languageId !== '') {
+            $options[SalesChannelContextService::LANGUAGE_ID] = $languageId;
         }
 
         $salesChannelContext = $this->salesChannelContextFactory->create(

@@ -10,6 +10,7 @@ use Kiener\MolliePayments\Service\CustomFieldService;
 use Kiener\MolliePayments\Service\LoggerService;
 use Kiener\MolliePayments\Service\OrderService;
 use Kiener\MolliePayments\Service\SettingsService;
+use Kiener\MolliePayments\Service\WebhookBuilder\WebhookBuilder;
 use Kiener\MolliePayments\Setting\MollieSettingStruct;
 use Mollie\Api\Exceptions\ApiException;
 use Mollie\Api\MollieApiClient;
@@ -96,6 +97,11 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
     protected $environment;
 
     /**
+     * @var WebhookBuilder
+     */
+    private $webhookBuilder;
+
+    /**
      * PaymentHandler constructor.
      *
      * @param OrderTransactionStateHandler $transactionStateHandler
@@ -129,6 +135,8 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
         $this->router = $router;
         $this->settingsService = $settingsService;
         $this->environment = $environment;
+
+        $this->webhookBuilder = new WebhookBuilder($router);
     }
 
     /**
@@ -141,6 +149,7 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
      */
     protected function processPaymentMethodSpecificParameters(array $orderData, SalesChannelContext $salesChannelContext, CustomerEntity $customer, LocaleEntity $locale): array
     {
+        return [];
     }
 
     /**
@@ -228,9 +237,17 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
                 );
             }
 
-            // Get the payment url from the order at Mollie.
-            if ($mollieOrder !== null) {
-                $paymentUrl = isset($mollieOrder) ? $mollieOrder->getCheckoutUrl() : null;
+            if (!$mollieOrder instanceof Order) {
+                throw new Exception("Couldn't create payment at mollie");
+            }
+
+            // first check if we got a checkoutUrl from mollie (in case of creditcard components
+            // it could be that payment is already finished, checkout url misses in these cases)
+            $paymentUrl = $mollieOrder->getCheckoutUrl();
+
+            if (empty($paymentUrl)) {
+                // if it misses => take transaction finalize url (we will check in payment url)
+                $paymentUrl = $transaction->getReturnUrl();
             }
         } catch (Exception $e) {
             $this->logger->addEntry(
@@ -253,6 +270,7 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
         }
 
         // Set the payment status to in progress
+        /** @var string|null $paymentUrl */
         if (
             isset($paymentUrl)
             && !empty($paymentUrl)
@@ -601,20 +619,15 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
         // Temporarily disabled due to errors with Paypal
         // $orderData = $this->processPaymentMethodSpecificParameters($orderData, $salesChannelContext, $customer, $locale);
 
-        /**
-         * Generate the URL for Mollie's webhook call only on prod environment. This webhook is used
-         * to handle payment updates.
-         */
-        if (
-            getenv(self::ENV_LOCAL_DEVELOPMENT) === false
-            || (bool) getenv(self::ENV_LOCAL_DEVELOPMENT) === false
-        ) {
-            $webhookUrl = $this->router->generate('frontend.mollie.webhook', [
-                'transactionId' => $transactionId
-            ], $this->router::ABSOLUTE_URL);
-            $orderData[self::FIELD_WEBHOOK_URL] = $webhookUrl;
-            $orderData['payment']['webhookUrl'] = $webhookUrl;
-        }
+
+
+        # create our webhook url
+        # and assign it to both required fields in the order
+        $webhookUrl = $this->webhookBuilder->buildWebhook($transactionId);
+        $orderData[self::FIELD_WEBHOOK_URL] = $webhookUrl;
+        $orderData['payment']['webhookUrl'] = $webhookUrl;
+
+
 
         $customFields = $customer->getCustomFields();
 
@@ -636,7 +649,6 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
         ) {
             $orderData['payment']['customerId'] = $customFields[CustomerService::CUSTOM_FIELDS_KEY_MOLLIE_CUSTOMER_ID];
         }
-
 
         // @todo Handle iDeal issuers from the iDeal payment handler
         if (
@@ -710,6 +722,7 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
          * the order from Mollie after payment to set the order
          * and payment status.
          */
+        /** @var Order|null $mollieOrder */
         if (isset($mollieOrder, $mollieOrder->id)) {
             $this->orderService->getOrderRepository()->update([[
                 'id' => $order->getId(),

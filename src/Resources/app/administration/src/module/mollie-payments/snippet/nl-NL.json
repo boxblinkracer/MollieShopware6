@@ -34,7 +34,8 @@
     }
   },
   "sw-payment": {
-    "testButton": "Controlle",
+    "apiLinkButton": "Haal uw API sleutels van het Mollie Dashboard",
+    "testButton": "Test API sleutels",
     "testApiKeys": {
       "title": "Mollie Payments",
       "apiKey": "API Key",

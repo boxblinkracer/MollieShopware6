@@ -3,8 +3,10 @@
 namespace Kiener\MolliePayments;
 
 use Exception;
+use Kiener\MolliePayments\Service\ApplePayDomainVerificationService;
 use Kiener\MolliePayments\Service\CustomFieldService;
 use Kiener\MolliePayments\Service\PaymentMethodService;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\Plugin;
 use Shopware\Core\Framework\Plugin\Context\ActivateContext;
 use Shopware\Core\Framework\Plugin\Context\DeactivateContext;
@@ -44,10 +46,13 @@ class MolliePayments extends Plugin
     {
         parent::install($context);
 
+        /** @var EntityRepositoryInterface $customFieldRepository */
+        $customFieldRepository = $this->container->get('custom_field_set.repository');
+
         // Add custom fields
         $customFieldService = new CustomFieldService(
             $this->container,
-            $this->container->get('custom_field_set.repository')
+            $customFieldRepository
         );
 
         $customFieldService->addCustomFields($context->getContext());
@@ -56,12 +61,18 @@ class MolliePayments extends Plugin
     public function update(UpdateContext $context): void
     {
         parent::update($context);
+
+        if($context->getPlugin()->isActive() === true) {
+            // add domain verification
+            /** @var ApplePayDomainVerificationService $domainVerificationService */
+            $domainVerificationService = $this->container->get(ApplePayDomainVerificationService::class);
+            $domainVerificationService->downloadDomainAssociationFile();
+        }
     }
 
     public function postInstall(InstallContext $context): void
     {
         parent::postInstall($context);
-
     }
 
     public function uninstall(UninstallContext $context) : void
@@ -80,6 +91,11 @@ class MolliePayments extends Plugin
         $paymentMethodHelper
             ->setClassName(get_class($this))
             ->addPaymentMethods($context->getContext());
+
+        // add domain verification
+        /** @var ApplePayDomainVerificationService $domainVerificationService */
+        $domainVerificationService = $this->container->get(ApplePayDomainVerificationService::class);
+        $domainVerificationService->downloadDomainAssociationFile();
     }
 
     public function deactivate(DeactivateContext $context) : void

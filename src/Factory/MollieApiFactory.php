@@ -66,10 +66,8 @@ class MollieApiFactory
      */
     public function getClient(?string $salesChannelId = null, ?Context $context = null): MollieApiClient
     {
-        /** @var MollieApiClient apiClient */
         $this->apiClient = new MollieApiClient();
 
-        /** @var MollieSettingStruct $settings */
         $settings = $this->settingsService->getSettings($salesChannelId, $context);
 
         try {
@@ -86,7 +84,7 @@ class MollieApiFactory
 
             // @todo Add plugin version variable
             $this->apiClient->addVersionString(
-                'MollieShopware6/1.3.16'
+                'MollieShopware6/1.4.1'
             );
         } catch (Exception $e) {
             $this->logger->error($e->getMessage(), [$e]);

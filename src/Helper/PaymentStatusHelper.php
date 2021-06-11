@@ -3,8 +3,10 @@
 namespace Kiener\MolliePayments\Helper;
 
 use Exception;
+use Kiener\MolliePayments\Handler\Method\ApplePayPayment;
 use Kiener\MolliePayments\Service\LoggerService;
 use Kiener\MolliePayments\Service\Order\OrderStateService;
+use Kiener\MolliePayments\Service\PaymentMethodService;
 use Kiener\MolliePayments\Service\SettingsService;
 use Kiener\MolliePayments\Setting\MollieSettingStruct;
 use Mollie\Api\Resources\Order;
@@ -47,6 +49,9 @@ class PaymentStatusHelper
     /** @var EntityRepositoryInterface */
     protected $orderTransactionRepository;
 
+    /** @var PaymentMethodService */
+    protected $paymentMethodService;
+
     /**
      * PaymentStatusHelper constructor.
      *
@@ -62,7 +67,8 @@ class PaymentStatusHelper
         SettingsService $settingsService,
         StateMachineRegistry $stateMachineRegistry,
         EntityRepositoryInterface $paymentMethodRepository,
-        EntityRepositoryInterface $orderTransactionRepository
+        EntityRepositoryInterface $orderTransactionRepository,
+        PaymentMethodService $paymentMethodService
     )
     {
         $this->logger = $logger;
@@ -73,6 +79,7 @@ class PaymentStatusHelper
 
         $this->paymentMethodRepository = $paymentMethodRepository;
         $this->orderTransactionRepository = $orderTransactionRepository;
+        $this->paymentMethodService = $paymentMethodService;
     }
 
     /**
@@ -156,7 +163,8 @@ class PaymentStatusHelper
 
         $useMollieFailureHandling = !$settings->isShopwareFailedPaymentMethod();
 
-        if ($useMollieFailureHandling) {
+        if ($useMollieFailureHandling
+            && $this->paymentMethodService->isPaidApplePayTransaction($transaction, $mollieOrder) === false) {
             $currentCustomerSelectedPaymentMethod = $mollieOrder->method;
 
             if (is_null($currentCustomerSelectedPaymentMethod)) {
@@ -208,7 +216,7 @@ class PaymentStatusHelper
             $transactionState !== null
             && $transactionState->getTechnicalName() !== PaymentStatus::STATUS_PAID
             // FIXME: Should probably check against OrderTransactionStates constants here
-            && $mollieOrder->isPaid()
+            && ($mollieOrder->isPaid() || $mollieOrder->isCompleted())
         ) {
             try {
                 if (method_exists($this->orderTransactionStateHandler, 'paid')) {
@@ -262,14 +270,19 @@ class PaymentStatusHelper
         }
 
         if ($mollieOrder->isAuthorized()) {
-            // FIXME: Should probably check against OrderTransactionStates constants here
             if ($transactionState !== null && $transactionState->getTechnicalName() !== PaymentStatus::STATUS_AUTHORIZED) {
+                if (defined('Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMachineTransitionActions::ACTION_AUTHORIZE')) {
+                    $transitionAction = StateMachineTransitionActions::ACTION_AUTHORIZE;
+                } else {
+                    $transitionAction = StateMachineTransitionActions::ACTION_PAY;
+                }
+
                 try {
                     $this->stateMachineRegistry->transition(
                         new Transition(
                             OrderTransactionDefinition::ENTITY_NAME,
                             $transaction->getId(),
-                            StateMachineTransitionActions::ACTION_AUTHORIZE,
+                            $transitionAction,
                             'stateId'
                         ),
                         $context
