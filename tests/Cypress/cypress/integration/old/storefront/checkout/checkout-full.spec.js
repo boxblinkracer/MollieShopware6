@@ -1,44 +1,36 @@
-<<<<<<< HEAD:tests/Cypress/cypress/integration/storefront/checkout/checkout-success.spec.js
-import Devices from "Services/utils/Devices";
-import Session from "Services/utils/Session"
-import Shopware from "Services/shopware/Shopware"
-import PaymentScreenAction from 'Actions/mollie/PaymentScreenAction';
-import IssuerScreenAction from 'Actions/mollie/IssuerScreenAction';
-// ------------------------------------------------------
-import ShopConfigurationAction from "Actions/admin/ShopConfigurationAction";
-// ------------------------------------------------------
-import CheckoutAction from 'Actions/storefront/checkout/CheckoutAction';
-import PaymentAction from "Actions/storefront/checkout/PaymentAction";
-import DummyBasketScenario from "Scenarios/DummyBasketScenario";
-=======
 import Devices from "Services/Devices";
 import Session from "Actions/utils/Session"
 import PaymentScreenAction from 'Actions/mollie/PaymentScreenAction';
 import IssuerScreenAction from 'Actions/mollie/IssuerScreenAction';
 // ------------------------------------------------------
-import ShopConfigurationAction from "Actions/6.4/admin/ShopConfigurationAction";
+import ShopConfigurationAction from "Actions/old/admin/ShopConfigurationAction";
 // ------------------------------------------------------
-import TopMenuAction from 'Actions/6.4/storefront/navigation/TopMenuAction';
-import LoginAction from 'Actions/6.4/storefront/account/LoginAction';
-import RegisterAction from 'Actions/6.4/storefront/account/RegisterAction';
-import ListingAction from 'Actions/6.4/storefront/products/ListingAction';
-import PDPAction from 'Actions/6.4/storefront/products/PDPAction';
-import CheckoutAction from 'Actions/6.4/storefront/checkout/CheckoutAction';
->>>>>>> Squashed commit of the following::tests/Cypress/cypress/integration/6.4/storefront/checkout/checkout-full.spec.js
+import TopMenuAction from 'Actions/old/storefront/navigation/TopMenuAction';
+import LoginAction from 'Actions/old/storefront/account/LoginAction';
+import RegisterAction from 'Actions/old/storefront/account/RegisterAction';
+import ListingAction from 'Actions/old/storefront/products/ListingAction';
+import PDPAction from 'Actions/old/storefront/products/PDPAction';
+import CheckoutAction from 'Actions/old/storefront/checkout/CheckoutAction';
+
 
 
 const devices = new Devices();
 const session = new Session();
-const shopware = new Shopware();
 
 const configAction = new ShopConfigurationAction();
+
+const topMenu = new TopMenuAction();
+const register = new RegisterAction();
+const login = new LoginAction();
+const listing = new ListingAction();
+const pdp = new PDPAction();
 const checkout = new CheckoutAction();
-const paymentAction = new PaymentAction();
 const molliePayment = new PaymentScreenAction();
 const mollieIssuer = new IssuerScreenAction();
 
-const scenarioDummyBasket = new DummyBasketScenario(3);
 
+const user_email = "dev@localhost.de";
+const user_pwd = "MollieMollie111";
 
 const device = devices.getFirstDevice();
 
@@ -63,7 +55,8 @@ context("Checkout Tests", () => {
 
     before(function () {
         devices.setDevice(device);
-        configAction.setupShop(true, false);
+        configAction.setupShop();
+        register.doRegister(user_email, user_pwd);
     })
 
     beforeEach(() => {
@@ -77,43 +70,42 @@ context("Checkout Tests", () => {
 
                 it('Pay with ' + payment.name, () => {
 
-                    scenarioDummyBasket.execute();
+                    cy.visit('/');
 
-                    paymentAction.switchPaymentMethod(payment.name);
+                    login.doLogin(user_email, user_pwd);
 
+                    topMenu.clickOnHome();
+                    listing.clickOnFirstProduct();
+                    pdp.addToCart(3);
+
+                    checkout.goToCheckoutInOffCanvas();
+
+                    checkout.switchPaymentMethod(payment.name);
+
+                    let totalSum = 0;
                     // grab the total sum of our order from the confirm page.
                     // we also want to test what the user has to pay in Mollie.
                     // this has to match!
                     checkout.getTotalFromConfirm().then(total => {
                         cy.log("Cart Total: " + total);
-                        cy.wrap(total.toString().trim()).as('totalSum')
+                        totalSum = total;
                     });
 
-                    shopware.prepareDomainChange();
                     checkout.placeOrderOnConfirm();
 
                     // verify that we are on the mollie payment screen
                     // and that our payment method is also visible somewhere in that url
                     cy.url().should('include', 'https://www.mollie.com/paymentscreen/');
                     cy.url().should('include', payment.key);
+                    cy.get('.header__amount').contains(totalSum);
 
-                    // verify that the price is really the one
-                    // that was displayed in Shopware
-                    cy.get('.header__amount').then(($headerAmount) => {
-                        cy.get('@totalSum').then(totalSum => {
-                            expect($headerAmount.text()).to.contain(totalSum);
-                        });
-                    })
-
-
-                    molliePayment.initSandboxCookie();
 
                     if (payment.key === 'klarnapaylater' || payment.key === 'klarnasliceit') {
 
                         molliePayment.selectAuthorized();
 
                     } else {
-
+                        
                         if (payment.key === 'kbc') {
                             mollieIssuer.selectKBC();
                         }
@@ -131,8 +123,6 @@ context("Checkout Tests", () => {
         })
     })
 
-<<<<<<< HEAD:tests/Cypress/cypress/integration/storefront/checkout/checkout-success.spec.js
-=======
     describe('Failed Checkout', () => {
         context(devices.getDescription(device), () => {
 
@@ -162,5 +152,4 @@ context("Checkout Tests", () => {
         })
     })
 
->>>>>>> Squashed commit of the following::tests/Cypress/cypress/integration/6.4/storefront/checkout/checkout-full.spec.js
 })

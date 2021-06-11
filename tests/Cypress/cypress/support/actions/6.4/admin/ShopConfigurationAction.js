@@ -1,4 +1,4 @@
-import AdminAPIClient from "Services/shopware/AdminAPIClient";
+import AdminAPIClient from "Services/6.4/shopware/AdminAPIClient";
 
 
 export default class ShopConfigurationAction {
