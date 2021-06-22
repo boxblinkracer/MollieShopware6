@@ -3,6 +3,7 @@
 namespace Kiener\MolliePayments\Handler;
 
 use Exception;
+use Kiener\MolliePayments\Core\Content\CheckoutUrl\MollieReturnEntity;
 use Kiener\MolliePayments\Exception\PaymentUrlException;
 use Kiener\MolliePayments\Helper\PaymentStatusHelper;
 use Kiener\MolliePayments\Service\CustomerService;
@@ -10,6 +11,7 @@ use Kiener\MolliePayments\Service\CustomFieldService;
 use Kiener\MolliePayments\Service\LoggerService;
 use Kiener\MolliePayments\Service\OrderService;
 use Kiener\MolliePayments\Service\SettingsService;
+use Kiener\MolliePayments\Service\UrlShortener\UrlShortener;
 use Kiener\MolliePayments\Service\WebhookBuilder\WebhookBuilder;
 use Kiener\MolliePayments\Setting\MollieSettingStruct;
 use Mollie\Api\Exceptions\ApiException;
@@ -29,6 +31,8 @@ use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Payment\Cart\AsyncPaymentTransactionStruct;
 use Shopware\Core\Checkout\Payment\Cart\PaymentHandler\AsynchronousPaymentHandlerInterface;
 use Shopware\Core\Checkout\Payment\Exception\CustomerCanceledAsyncPaymentException;
+use Shopware\Core\Framework\Context;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Exception\InconsistentCriteriaIdsException;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\System\Currency\CurrencyEntity;
@@ -102,17 +106,23 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
     private $webhookBuilder;
 
     /**
+     * @var EntityRepositoryInterface
+     */
+    private $repoMollieCheckouts;
+
+
+    /**
      * PaymentHandler constructor.
-     *
      * @param OrderTransactionStateHandler $transactionStateHandler
-     * @param OrderService                 $orderService
-     * @param CustomerService              $customerService
-     * @param MollieApiClient              $apiClient
-     * @param SettingsService              $settingsService
-     * @param PaymentStatusHelper          $paymentStatusHelper
-     * @param LoggerService                $logger
-     * @param RouterInterface              $router
-     * @param string                       $environment
+     * @param OrderService $orderService
+     * @param CustomerService $customerService
+     * @param MollieApiClient $apiClient
+     * @param SettingsService $settingsService
+     * @param PaymentStatusHelper $paymentStatusHelper
+     * @param LoggerService $logger
+     * @param RouterInterface $router
+     * @param EntityRepositoryInterface $repoMollieCheckouts
+     * @param string $environment
      */
     public function __construct(
         OrderTransactionStateHandler $transactionStateHandler,
@@ -123,6 +133,7 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
         PaymentStatusHelper $paymentStatusHelper,
         LoggerService $logger,
         RouterInterface $router,
+        EntityRepositoryInterface $repoMollieCheckouts,
         string $environment
     )
     {
@@ -134,16 +145,17 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
         $this->logger = $logger;
         $this->router = $router;
         $this->settingsService = $settingsService;
+        $this->repoMollieCheckouts = $repoMollieCheckouts;
         $this->environment = $environment;
 
         $this->webhookBuilder = new WebhookBuilder($router);
     }
 
     /**
-     * @param array               $orderData
+     * @param array $orderData
      * @param SalesChannelContext $salesChannelContext
-     * @param CustomerEntity      $customer
-     * @param LocaleEntity        $locale
+     * @param CustomerEntity $customer
+     * @param LocaleEntity $locale
      *
      * @return array
      */
@@ -161,8 +173,8 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
      * Throw a
      *
      * @param AsyncPaymentTransactionStruct $transaction
-     * @param RequestDataBag                $dataBag
-     * @param SalesChannelContext           $salesChannelContext
+     * @param RequestDataBag $dataBag
+     * @param SalesChannelContext $salesChannelContext
      *
      * @return RedirectResponse @see AsyncPaymentProcessException exception if an error ocurres while processing the
      *                          payment
@@ -261,7 +273,7 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
             );
 
             $transactions = $order->getTransactions();
-            $transactions->sort(function(OrderTransactionEntity $a, OrderTransactionEntity $b) {
+            $transactions->sort(function (OrderTransactionEntity $a, OrderTransactionEntity $b) {
                 return $a->getCreatedAt() <=> $b->getCreatedAt();
             });
             $lastTransaction = $transactions->last();
@@ -307,8 +319,8 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
      * Throw a
      *
      * @param AsyncPaymentTransactionStruct $transaction
-     * @param Request                       $request
-     * @param SalesChannelContext           $salesChannelContext @see AsyncPaymentFinalizeException exception if an
+     * @param Request $request
+     * @param SalesChannelContext $salesChannelContext @see AsyncPaymentFinalizeException exception if an
      *                                                           error ocurres while calling an external payment API
      *                                                           Throw a @throws RuntimeException*@throws
      *                                                           CustomerCanceledAsyncPaymentException
@@ -464,7 +476,7 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
      * Returns an order entity of a transaction.
      *
      * @param AsyncPaymentTransactionStruct $transaction
-     * @param SalesChannelContext           $salesChannelContext
+     * @param SalesChannelContext $salesChannelContext
      *
      * @return OrderEntity|null
      */
@@ -477,13 +489,13 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
     /**
      * Returns a prepared array to create an order at Mollie.
      *
-     * @param string              $paymentMethod
-     * @param string              $transactionId
-     * @param OrderEntity         $order
-     * @param string              $returnUrl
+     * @param string $paymentMethod
+     * @param string $transactionId
+     * @param OrderEntity $order
+     * @param string $returnUrl
      * @param SalesChannelContext $salesChannelContext
      *
-     * @param array               $paymentData
+     * @param array $paymentData
      *
      * @return array
      */
@@ -552,7 +564,7 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
          * in the customer's language.
          *
          * @var LanguageEntity $language
-         * @var LocaleEntity   $locale
+         * @var LocaleEntity $locale
          */
         $locale = $order->getLanguage() !== null ? $order->getLanguage()->getLocale() : null;
 
@@ -565,10 +577,6 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
                 $currency !== null ? $currency->getIsoCode() : 'EUR',
                 $order->getAmountTotal()
             ),
-            self::FIELD_REDIRECT_URL => $this->router->generate('frontend.mollie.payment', [
-                'transactionId' => $transactionId,
-                'returnUrl' => urlencode($returnUrl),
-            ], $this->router::ABSOLUTE_URL),
             self::FIELD_LOCALE => $locale !== null ? $locale->getCode() : null,
             self::FIELD_METHOD => $paymentMethod,
             self::FIELD_ORDER_NUMBER => $order->getOrderNumber(),
@@ -583,6 +591,10 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
             ),
             self::FIELD_PAYMENT => $paymentData,
         ];
+
+
+        $orderData[self::FIELD_REDIRECT_URL] = $this->buildMollieReturnUrl($transactionId, $returnUrl, $salesChannelContext->getContext());
+
 
         /**
          * Handle vat free orders.
@@ -620,13 +632,11 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
         // $orderData = $this->processPaymentMethodSpecificParameters($orderData, $salesChannelContext, $customer, $locale);
 
 
-
         # create our webhook url
         # and assign it to both required fields in the order
         $webhookUrl = $this->webhookBuilder->buildWebhook($transactionId);
         $orderData[self::FIELD_WEBHOOK_URL] = $webhookUrl;
         $orderData['payment']['webhookUrl'] = $webhookUrl;
-
 
 
         $customFields = $customer->getCustomFields();
@@ -679,9 +689,9 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
     /**
      * Returns an order that is created through the Mollie API.
      *
-     * @param array               $orderData
-     * @param string              $returnUrl
-     * @param OrderEntity         $order
+     * @param array $orderData
+     * @param string $returnUrl
+     * @param OrderEntity $order
      * @param SalesChannelContext $salesChannelContext
      *
      * @return Order|null
@@ -739,9 +749,9 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
 
             /** @var OrderLine $line */
             foreach ($mollieOrder->lines as $line) {
-                if (isset($line->metadata->{ $this->orderService::ORDER_LINE_ITEM_ID })) {
+                if (isset($line->metadata->{$this->orderService::ORDER_LINE_ITEM_ID})) {
                     $orderLineUpdate[] = [
-                        'id' => $line->metadata->{ $this->orderService::ORDER_LINE_ITEM_ID },
+                        'id' => $line->metadata->{$this->orderService::ORDER_LINE_ITEM_ID},
                         'customFields' => [
                             CustomFieldService::CUSTOM_FIELDS_KEY_MOLLIE_PAYMENTS => [
                                 'order_line_id' => $line->id,
@@ -806,4 +816,37 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
             throw new RuntimeException(sprintf('Could not set Mollie Api Key, error: %s', $e->getMessage()));
         }
     }
+
+    /**
+     * @param string $transactionId
+     * @param string $finalizeUrl
+     * @param Context $context
+     * @return string
+     */
+    private function buildMollieReturnUrl(string $transactionId, string $finalizeUrl, Context $context): string
+    {
+        # build RETURN URL
+        # this might be too long in Shopware, which could lead to a "URL too long" exception from
+        # the Mollie API when starting the request.
+        # so we create our own short links, by saving both, the long Shopware URL and a unique shorter Mollie URL.
+        # Mollie will then return the user to the short URL, where we basically forward him to the internally
+        # saved original Shopware URL.
+        $mollieReturnUrl = $this->router->generate(
+            'frontend.mollie.payment',
+            [
+                'transactionId' => $transactionId,
+            ],
+            $this->router::ABSOLUTE_URL
+        );
+
+        $this->repoMollieCheckouts->create([
+            [
+                'transactionId' => $transactionId,
+                'finalizeUrl' => urlencode($finalizeUrl),
+            ]
+        ], $context);
+
+        return $mollieReturnUrl;
+    }
+
 }

@@ -23,6 +23,7 @@ use Shopware\Core\Checkout\Cart\Exception\OrderNotFoundException;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Order\OrderStates;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Exception\InconsistentCriteriaIdsException;
 use Shopware\Core\Framework\Event\BusinessEventDispatcher;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
@@ -56,19 +57,28 @@ class PaymentController extends StorefrontController
     /** @var TransactionService */
     private $transactionService;
 
+    /**
+     * @var EntityRepositoryInterface
+     */
+    private $repoMollieCheckouts;
+
     /** @var LoggerService */
     private $logger;
 
-    public function __construct(
-        RouterInterface $router,
-        MollieApiClient $apiClient,
-        BusinessEventDispatcher $eventDispatcher,
-        OrderStateService $orderStateService,
-        PaymentStatusHelper $paymentStatusHelper,
-        SettingsService $settingsService,
-        TransactionService $transactionService,
-        LoggerService $logger
-    )
+
+    /**
+     * PaymentController constructor.
+     * @param RouterInterface $router
+     * @param MollieApiClient $apiClient
+     * @param BusinessEventDispatcher $eventDispatcher
+     * @param OrderStateService $orderStateService
+     * @param PaymentStatusHelper $paymentStatusHelper
+     * @param SettingsService $settingsService
+     * @param TransactionService $transactionService
+     * @param EntityRepositoryInterface $repoMollieCheckouts
+     * @param LoggerService $logger
+     */
+    public function __construct(RouterInterface $router, MollieApiClient $apiClient, BusinessEventDispatcher $eventDispatcher, OrderStateService $orderStateService, PaymentStatusHelper $paymentStatusHelper, SettingsService $settingsService, TransactionService $transactionService, EntityRepositoryInterface $repoMollieCheckouts, LoggerService $logger)
     {
         $this->router = $router;
         $this->apiClient = $apiClient;
@@ -77,6 +87,7 @@ class PaymentController extends StorefrontController
         $this->paymentStatusHelper = $paymentStatusHelper;
         $this->settingsService = $settingsService;
         $this->transactionService = $transactionService;
+        $this->repoMollieCheckouts = $repoMollieCheckouts;
         $this->logger = $logger;
     }
 
@@ -357,7 +368,7 @@ class PaymentController extends StorefrontController
 
         // If we redirect to the payment screen, set the transaction to in progress
         try {
-            if (method_exists($this->paymentStatusHelper->getOrderTransactionStateHandler(),'process')) {
+            if (method_exists($this->paymentStatusHelper->getOrderTransactionStateHandler(), 'process')) {
                 $this->paymentStatusHelper->getOrderTransactionStateHandler()->process(
                     $transactionId,
                     $context->getContext()
