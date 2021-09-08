@@ -10,153 +10,12 @@ on:
 
 jobs:
 
-  php_checks:
-    name: PHP Syntax Checks
-    runs-on: ubuntu-latest
-    steps:
-      - name: Clone Code
-        uses: actions/checkout@v2
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: 7.4
-
-      - name: PHP Syntax Checks
-        run: make phpcheck -B
-
-  php_min:
-    name: PHP 7.2 Compatibility
-    needs: php_checks
-    runs-on: ubuntu-latest
-    steps:
-      - name: Clone Code
-        uses: actions/checkout@v2
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: 7.4
-
-      - name: Install Dependencies
-        run: make dev -B
-
-      - name: PHP Compatibility Checks
-        run: make phpmin -B
-
-  # ------------------------------------------------------------------------------------------------------------------------
-
-  unit_tests:
-    name: Unit Tests | PHP ${{ matrix.php }}
-    needs: php_min
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        php: [ '7.4' ]
-    steps:
-      - name: Clone Code
-        uses: actions/checkout@v2
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: ${{ matrix.php }}
-
-      - name: Install Dependencies
-        run: make dev -B
-
-      - name: Run PHPUnit
-        run: make test -B
-
-  phpstan:
-    name: Static Analyzers
-    needs: unit_tests
-    runs-on: ubuntu-latest
-    steps:
-
-      - name: Clone Code
-        uses: actions/checkout@v2
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: 7.4
-
-      - name: Install Dependencies
-        run: make dev -B
-
-      - name: Run PHPStan
-        run: make stan -B
-
-  phpcsfixer:
-    name: PHP CS Fixer
-    needs: phpstan
-    runs-on: ubuntu-latest
-    steps:
-
-      - name: Clone Code
-        uses: actions/checkout@v2
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: 7.4
-
-      - name: Install Dependencies
-        run: make dev -B
-
-      - name: Run PHP CS Fixer
-        run: make csfix -B
-
-  # ------------------------------------------------------------------------------------------------------------------------
-
-  integration:
-    name: Integration Tests | Shopware ${{ matrix.shopware }}
-    needs: phpcsfixer
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        shopware: [ '6.3.0', '6.2.0', '6.1.0' ]
-    steps:
-
-      - name: Clone Code
-        uses: actions/checkout@v2
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: 7.4
-
-      - name: Install PROD Dependencies
-        run: make install -B
-
-      - name: Start Docker
-        run: |
-          docker run --rm -p 80:80 --name shop -d dockware/play:${{ matrix.shopware }}
-          sleep 30
-          docker logs shop
-
-      - name: Upload into Docker
-        run: docker cp $(pwd)/. shop:/var/www/html/custom/plugins/MolliePayments
-
-      - name: Install Plugin
-        run: |
-          docker exec shop bash -c "php bin/console plugin:refresh"
-          docker exec shop bash -c "php bin/console plugin:install MolliePayments --activate"
-
-  # ------------------------------------------------------------------------------------------------------------------------
-
   e2e:
     name: E2E Tests | Shopware ${{ matrix.shopware }}
-    needs: integration
     runs-on: ubuntu-latest
     strategy:
       matrix:
-<<<<<<< HEAD
-        shopware: [ '6.4.4.0', '6.4.3.1', '6.4.3.0', '6.4.2.1', '6.4.1.2', '6.4.0.0', '6.3.5.4', '6.3.5.2' ]
-=======
-        shopware: [ '6.3.5.2', '6.3.0' ]
->>>>>>> add better lots + showpare 6.3.0
+        shopware: [ '6.4.4.0' ]
     steps:
 
       - name: Clone Code
@@ -170,14 +29,18 @@ jobs:
       - name: Install Dependencies
         run: make install -B
 
+      - name: Download Docker
+        run: |
+          docker pull dockware/dev:${{ matrix.shopware }}
+
       - name: Start Docker
         run: |
-          docker run --rm -p 80:80 --name shop -d dockware/dev:${{ matrix.shopware }}
+          docker run --rm -p 443:443 --name shop -d dockware/dev:${{ matrix.shopware }}
           sleep 30
           docker logs shop
           # now change the domain of our shop, mollie doesn't work with localhost
-          sudo echo "127.0.0.1 local.mollie.shop" | sudo tee -a /etc/hosts
-          docker exec shop bash -c "mysql -u root -proot shopware -e \"UPDATE sales_channel_domain SET url='http://local.mollie.shop' WHERE url NOT LIKE 'default.%';\""
+          sudo echo "127.0.0.1 docker.mollie.shop" | sudo tee -a /etc/hosts
+          docker exec shop bash -c "mysql -u root -proot shopware -e \"UPDATE sales_channel_domain SET url='https://docker.mollie.shop' WHERE url NOT LIKE 'default.%';\""
 
       - name: Upload into Docker
         run: |
@@ -210,17 +73,9 @@ jobs:
         run: cd tests/Cypress && make install -B
 
       - name: Start Cypress
-        run: cd tests/Cypress && make run shopware=$SW_VERSION url=http://local.mollie.shop
+        run: cd tests/Cypress && make run shopware=$SW_VERSION url=https://docker.mollie.shop
         env:
           SW_VERSION: ${{ matrix.shopware }}
-
-      - name: Download Logs
-        if: ${{ always() }}
-        run: |
-          mkdir -p $(pwd)/tests/Cypress/cypress/logs/shopware
-          mkdir -p $(pwd)/tests/Cypress/cypress/logs/apache
-          docker cp shop:/var/www/html/var/log/. $(pwd)/tests/Cypress/cypress/logs/shopware
-          docker cp shop:/var/log/php/. $(pwd)/tests/Cypress/cypress/logs/apache
 
       - name: Download Logs
         if: ${{ always() }}

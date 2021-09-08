@@ -1,4 +1,4 @@
-import NavigationRepository from 'Repositories/6.4/storefront/navigation/NavigationRepository';
+import NavigationRepository from 'Repositories/storefront/navigation/NavigationRepository';
 
 const repo = new NavigationRepository();
 

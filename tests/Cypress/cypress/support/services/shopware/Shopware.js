@@ -21,6 +21,7 @@ export default class Shopware {
      */
     prepareDomainChange() {
         cookies.prepareCrossdomain('session-');
+        cookies.prepareCrossdomain('sw-states');
     }
 
     /**
