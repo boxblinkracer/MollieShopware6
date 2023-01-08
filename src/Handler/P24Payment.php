@@ -38,7 +38,7 @@ class P24Payment implements AsynchronousPaymentHandlerInterface
     {
         $amount = $transaction->getOrder()->getAmountTotal();
 
-        $paymentURL = $this->mollie->createPayment('p24', $amount);
+        $paymentURL = $this->mollie->createPayment('przelewy24', $amount);
 
         return new RedirectResponse($paymentURL);
     }

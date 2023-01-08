@@ -3,7 +3,7 @@
 namespace Kiener\MolliePayments\Components\Mollie;
 
 
-use Kiener\MolliePayments\Setting\PluginConfiguration;
+use Kiener\MolliePayments\Components\Configuration\PluginConfiguration;
 use Mollie\Api\MollieApiClient;
 
 class Mollie
@@ -44,6 +44,9 @@ class Mollie
             'description' => '',
         ];
 
+        var_dump($params);
+        die();
+        
         $payment = $this->client->payments->create($params);
 
         return (string)$payment->getCheckoutUrl();
