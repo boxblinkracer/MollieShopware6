@@ -2,7 +2,7 @@
 
 namespace Kiener\MolliePayments\Components\Installer;
 
-use Kiener\MolliePayments\Handler\Method\EpsPayment;
+
 use Kiener\MolliePayments\Handler\Method\P24Payment;
 use Kiener\MolliePayments\MolliePayments;
 use Shopware\Core\Checkout\Payment\PaymentMethodEntity;
@@ -21,6 +21,10 @@ class PaymentInstaller
      */
     private $repoPaymentMethods;
 
+    /**
+     * @var PluginIdProvider
+     */
+    private $pluginIdProvider;
 
     /**
      * @param EntityRepositoryInterface $paymentRepository
@@ -39,7 +43,6 @@ class PaymentInstaller
      */
     public function installPaymentMethods(Context $context): void
     {
-
         $this->addPaymentMethods(P24Payment::class, 'P24', $context);
     }
 

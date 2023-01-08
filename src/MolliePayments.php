@@ -55,7 +55,7 @@ class MolliePayments extends Plugin
     private function installMethods(Context $context)
     {
         /** @var PaymentInstaller $installer * */
-        $installer = $this->container->get('Kiener\MolliePayments\Components\Installer\PaymentInstaller');
+        $installer = $this->container->get(PaymentInstaller::class);
 
         $installer->installPaymentMethods($context);
     }

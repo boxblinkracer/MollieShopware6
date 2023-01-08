@@ -7,14 +7,6 @@
     <services>
 
         <service id="Kiener\MolliePayments\Handler\Method\P24Payment">
-            <argument type="service" id="service_container"/>
-            <argument type="service" id="request_stack"/>
-            <argument type="service" id="Kiener\MolliePayments\Service\OrderService"/>
-            <argument type="service" id="Kiener\MolliePayments\Service\SettingsService"/>
-            <argument type="service" id="Kiener\MolliePayments\Service\MollieApi\OrderDataExtractor"/>
-            <argument type="service" id="mollie_payments.logger"/>
-
-            <tag name="mollie_payments.payment_method.remover.sw64"/>
         </service>
 
 
