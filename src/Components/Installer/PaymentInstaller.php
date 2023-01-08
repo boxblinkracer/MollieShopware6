@@ -3,6 +3,7 @@
 namespace Kiener\MolliePayments\Components\Installer;
 
 use Kiener\MolliePayments\Handler\Method\EpsPayment;
+use Kiener\MolliePayments\Handler\Method\P24Payment;
 use Kiener\MolliePayments\MolliePayments;
 use Shopware\Core\Checkout\Payment\PaymentMethodEntity;
 use Shopware\Core\Framework\Context;
@@ -25,7 +26,7 @@ class PaymentInstaller
      * @param EntityRepositoryInterface $paymentRepository
      * @param PluginIdProvider $pluginIdProvider
      */
-    public function __construct(EntityRepositoryInterface $paymentRepository, PluginIdProvider $pluginIdProvider, )
+    public function __construct(EntityRepositoryInterface $paymentRepository, PluginIdProvider $pluginIdProvider)
     {
         $this->repoPaymentMethods = $paymentRepository;
         $this->pluginIdProvider = $pluginIdProvider;
@@ -38,15 +39,21 @@ class PaymentInstaller
      */
     public function installPaymentMethods(Context $context): void
     {
-        $this->addPaymentMethods(EpsPayment::PAYMENT_METHOD_NAME, $context);
+
+        $this->addPaymentMethods(P24Payment::class, 'P24', $context);
     }
 
     /**
-     * @param array<mixed> $paymentMethods
+     * @param string $className
+     * @param string $name
      * @param Context $context
+     * @return void
      */
-    public function addPaymentMethods(string $methodName, string $identifier, Context $context): void
+    public function addPaymentMethods(string $className, string $name, Context $context): void
     {
+        die($className);
+        $identifier = get_class($className);
+
         $pluginId = $this->pluginIdProvider->getPluginIdByBaseClass(MolliePayments::class, $context);
 
         $upsertData = [];
@@ -72,7 +79,7 @@ class PaymentInstaller
                 'handlerIdentifier' => $identifier,
                 'pluginId' => $pluginId,
                 # ------------------------------------------
-                'name' => $methodName,
+                'name' => $name,
                 'description' => '',
                 'afterOrderEnabled' => true,
             ];
