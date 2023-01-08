@@ -47,16 +47,13 @@ class PaymentInstaller
     }
 
     /**
-     * @param string $className
+     * @param string $identifier
      * @param string $name
      * @param Context $context
      * @return void
      */
-    public function addPaymentMethods(string $className, string $name, Context $context): void
+    public function addPaymentMethods(string $identifier, string $name, Context $context): void
     {
-        die($className);
-        $identifier = get_class($className);
-
         $pluginId = $this->pluginIdProvider->getPluginIdByBaseClass(MolliePayments::class, $context);
 
         $upsertData = [];

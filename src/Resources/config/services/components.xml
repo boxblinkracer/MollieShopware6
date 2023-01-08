@@ -6,7 +6,7 @@
 
     <services>
 
-        <service id="Kiener\MolliePayments\Components\Installer\PaymentInstaller">
+        <service id="Kiener\MolliePayments\Components\Installer\PaymentInstaller" public="true">
             <argument type="service" id="payment_method.repository"/>
             <argument type="service" id="Shopware\Core\Framework\Plugin\Util\PluginIdProvider"/>
         </service>

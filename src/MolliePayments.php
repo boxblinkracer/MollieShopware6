@@ -26,17 +26,6 @@ class MolliePayments extends Plugin
 
 
     /**
-     * @param InstallContext $context
-     * @return void
-     */
-    public function install(InstallContext $context): void
-    {
-        parent::install($context);
-
-        $this->installMethods($context->getContext());
-    }
-
-    /**
      * @param ActivateContext $context
      * @return void
      * @throws \Doctrine\DBAL\Exception
