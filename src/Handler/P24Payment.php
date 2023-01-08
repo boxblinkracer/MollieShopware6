@@ -1,6 +1,6 @@
 <?php
 
-namespace Kiener\MolliePayments\Handler\Method;
+namespace Kiener\MolliePayments\Handler;
 
 use Kiener\MolliePayments\Components\Mollie\Mollie;
 use Shopware\Core\Checkout\Payment\Cart\AsyncPaymentTransactionStruct;
