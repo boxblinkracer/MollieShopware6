@@ -35,21 +35,31 @@ class Mollie
     {
         $params = [
             'amount' => [
-                'value' => $amount,
+                'value' => $this->formatValue($amount),
                 'currency' => 'EUR',
             ],
             'method' => $method,
-            'redirectUrl' => '',
-            'webhookUrl' => '',
-            'description' => '',
+            'redirectUrl' => 'https://mollie.com',
+            'description' => 'Shopware Order',
         ];
 
-        var_dump($params);
-        die();
-        
+
         $payment = $this->client->payments->create($params);
 
         return (string)$payment->getCheckoutUrl();
+    }
+
+    /**
+     * @param null|float $price
+     * @return string
+     */
+    public function formatValue(?float $price)
+    {
+        if (is_null($price)) {
+            $price = 0.0;
+        }
+
+        return number_format(round($price, 2), 2, '.', '');
     }
 
 }
