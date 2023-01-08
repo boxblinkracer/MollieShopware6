@@ -1,6 +1,6 @@
 <?php
 
-namespace Kiener\MolliePayments\Service;
+namespace Kiener\MolliePayments\Components\Installer;
 
 use Kiener\MolliePayments\Handler\Method\EpsPayment;
 use Kiener\MolliePayments\MolliePayments;
