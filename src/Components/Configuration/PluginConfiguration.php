@@ -1,6 +1,6 @@
 <?php
 
-namespace Kiener\MolliePayments\Setting;
+namespace Kiener\MolliePayments\Components\Configuration;
 
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 
