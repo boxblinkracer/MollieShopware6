@@ -28,10 +28,11 @@ class Mollie
     /**
      * @param string $method
      * @param float $amount
+     * @param string $billingEmail
      * @return string
      * @throws \Mollie\Api\Exceptions\ApiException
      */
-    public function createPayment(string $method, float $amount): string
+    public function createPayment(string $method, float $amount, string $billingEmail): string
     {
         $params = [
             'amount' => [
@@ -41,6 +42,7 @@ class Mollie
             'method' => $method,
             'redirectUrl' => 'https://mollie.com',
             'description' => 'Shopware Order',
+            'billingEmail' => $billingEmail,
         ];
 
 

@@ -37,8 +37,9 @@ class P24Payment implements AsynchronousPaymentHandlerInterface
     public function pay(AsyncPaymentTransactionStruct $transaction, RequestDataBag $dataBag, SalesChannelContext $salesChannelContext): RedirectResponse
     {
         $amount = $transaction->getOrder()->getAmountTotal();
+        $billingEmail = $transaction->getOrder()->getOrderCustomer()->getEmail();
 
-        $paymentURL = $this->mollie->createPayment('przelewy24', $amount);
+        $paymentURL = $this->mollie->createPayment('przelewy24', $amount, $billingEmail);
 
         return new RedirectResponse($paymentURL);
     }
