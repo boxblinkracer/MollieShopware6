@@ -6,7 +6,7 @@
 
     <services>
 
-        <service id="Kiener\MolliePayments\Service\Payment\Remover\RegularPaymentRemover">
+        <service id="Kiener\MolliePayments\Handler\Method\P24Payment">
             <argument type="service" id="service_container"/>
             <argument type="service" id="request_stack"/>
             <argument type="service" id="Kiener\MolliePayments\Service\OrderService"/>
@@ -17,43 +17,6 @@
             <tag name="mollie_payments.payment_method.remover.sw64"/>
         </service>
 
-        <service id="Kiener\MolliePayments\Components\MollieLimits\Service\MollieLimitsRemover">
-            <argument type="service" id="service_container"/>
-            <argument type="service" id="request_stack"/>
-            <argument type="service" id="Kiener\MolliePayments\Service\OrderService"/>
-            <argument type="service" id="Kiener\MolliePayments\Service\SettingsService"/>
-            <argument type="service" id="Kiener\MolliePayments\Service\Payment\Provider\ActivePaymentMethodsProvider"/>
-            <argument type="service" id="Kiener\MolliePayments\Service\MollieApi\OrderDataExtractor"/>
-            <argument type="service" id="mollie_payments.logger"/>
-
-            <tag name="mollie_payments.payment_method.remover.sw64"/>
-        </service>
-
-        <service id="Kiener\MolliePayments\Components\Subscription\Services\PaymentMethodRemover\SubscriptionRemover">
-            <argument type="service" id="service_container"/>
-            <argument type="service" id="request_stack"/>
-            <argument type="service" id="Kiener\MolliePayments\Service\SettingsService"/>
-            <argument type="service" id="Kiener\MolliePayments\Service\OrderService"/>
-            <argument type="service" id="Kiener\MolliePayments\Service\SettingsService"/>
-            <argument type="service" id="Kiener\MolliePayments\Service\MollieApi\OrderDataExtractor"/>
-            <argument type="service" id="mollie_payments.logger"/>
-
-            <tag name="mollie_payments.payment_method.remover.sw64"/>
-            <tag name="mollie_payments.payment_method.remover.sw63"/>
-        </service>
-
-        <service id="Kiener\MolliePayments\Components\Voucher\Service\VoucherRemover">
-            <argument type="service" id="service_container"/>
-            <argument type="service" id="request_stack"/>
-            <argument type="service" id="Kiener\MolliePayments\Service\OrderService"/>
-            <argument type="service" id="Kiener\MolliePayments\Service\SettingsService"/>
-            <argument type="service" id="Kiener\MolliePayments\Service\Voucher\VoucherService"/>
-            <argument type="service" id="Kiener\MolliePayments\Service\MollieApi\OrderDataExtractor"/>
-            <argument type="service" id="mollie_payments.logger"/>
-
-            <tag name="mollie_payments.payment_method.remover.sw64"/>
-            <tag name="mollie_payments.payment_method.remover.sw63"/>
-        </service>
 
     </services>
 </container>

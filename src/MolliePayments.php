@@ -19,8 +19,6 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 class MolliePayments extends Plugin
 {
-    const PLUGIN_VERSION = '3.3.0';
-
 
     /**
      * @param ContainerBuilder $container
@@ -31,21 +29,10 @@ class MolliePayments extends Plugin
         parent::build($container);
 
         $this->container = $container;
-
-        # load the dependencies that are compatible
-        # with our current shopware version
-        $loader = new DependencyLoader($container);
-        $loader->loadServices();
     }
 
 
-    /**
-     * @return void
-     */
-    public function boot(): void
-    {
-        parent::boot();
-    }
+
 
     /**
      * @param InstallContext $context

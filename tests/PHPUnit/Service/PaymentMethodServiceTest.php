@@ -24,7 +24,7 @@ use Kiener\MolliePayments\Handler\Method\Przelewy24Payment;
 use Kiener\MolliePayments\Handler\Method\SofortPayment;
 use Kiener\MolliePayments\Handler\Method\VoucherPayment;
 use Kiener\MolliePayments\Service\HttpClient\Adapter\Curl\CurlClient;
-use Kiener\MolliePayments\Service\PaymentMethodService;
+use Kiener\MolliePayments\Service\PaymentInstaller;
 use Mollie\Api\HttpAdapter\CurlMollieHttpAdapter;
 use MolliePayments\Tests\Fakes\FakeEntityRepository;
 use MolliePayments\Tests\Fakes\FakeHttpClient;
@@ -61,7 +61,7 @@ class PaymentMethodServiceTest extends TestCase
     private $paymentMethodRepository;
 
     /**
-     * @var PaymentMethodService
+     * @var PaymentInstaller
      */
     private $paymentMethodService;
 
@@ -73,7 +73,7 @@ class PaymentMethodServiceTest extends TestCase
         $this->mediaRepository = new FakeEntityRepository(new MediaDefinition());
         $this->paymentMethodRepository = new FakeEntityRepository(new PaymentMethodDefinition());
 
-        $this->paymentMethodService = new PaymentMethodService(
+        $this->paymentMethodService = new PaymentInstaller(
             $this->createMock(MediaService::class),
             $this->mediaRepository,
             $this->paymentMethodRepository,
