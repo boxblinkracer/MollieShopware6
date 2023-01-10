@@ -12,6 +12,7 @@ class PluginConfiguration
      */
     private $configService;
 
+
     /**
      * @param SystemConfigService $configService
      */

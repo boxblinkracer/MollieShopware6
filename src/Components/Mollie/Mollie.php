@@ -4,15 +4,22 @@ namespace Kiener\MolliePayments\Components\Mollie;
 
 
 use Kiener\MolliePayments\Components\Configuration\PluginConfiguration;
+use Kiener\MolliePayments\Components\Mollie\Api\MollieApi;
+use Kiener\MolliePayments\Components\Mollie\Services\NumberFormatter;
 use Mollie\Api\MollieApiClient;
 
 class Mollie
 {
 
     /**
-     * @var MollieApiClient
+     * @var MollieApi
      */
     private $client;
+
+    /**
+     * @var NumberFormatter
+     */
+    private $numberFormatter;
 
 
     /**
@@ -21,8 +28,9 @@ class Mollie
      */
     public function __construct(PluginConfiguration $configuration)
     {
-        $this->client = new MollieApiClient();
-        $this->client->setApiKey($configuration->getApiKey());
+        $this->client = new MollieApi($configuration->getApiKey());
+
+        $this->numberFormatter = new NumberFormatter();
     }
 
     /**
@@ -36,7 +44,7 @@ class Mollie
     {
         $params = [
             'amount' => [
-                'value' => $this->formatValue($amount),
+                'value' => $this->numberFormatter->formatValue($amount),
                 'currency' => 'EUR',
             ],
             'method' => $method,
@@ -45,23 +53,10 @@ class Mollie
             'billingEmail' => $billingEmail,
         ];
 
-
-        $payment = $this->client->payments->create($params);
+        $payment = $this->client->createPayment($params);
 
         return (string)$payment->getCheckoutUrl();
     }
 
-    /**
-     * @param null|float $price
-     * @return string
-     */
-    public function formatValue(?float $price)
-    {
-        if (is_null($price)) {
-            $price = 0.0;
-        }
-
-        return number_format(round($price, 2), 2, '.', '');
-    }
 
 }
