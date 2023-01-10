@@ -26,6 +26,6 @@ class PluginConfiguration
      */
     public function getApiKey(): string
     {
-        return $this->configService->getString('MolliePayments.config.apiKey');
+        return $this->configService->get('MolliePayments.config.apiKey');
     }
 }

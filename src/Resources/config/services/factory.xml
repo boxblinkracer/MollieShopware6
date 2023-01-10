@@ -6,9 +6,7 @@
 
     <services>
 
-        <service id="Kiener\MolliePayments\Factory\MollieFactory" public="true">
-            <argument type="service" id="Kiener\MolliePayments\Components\Configuration\PluginConfiguration"/>
-        </service>
+
 
     </services>
 </container>

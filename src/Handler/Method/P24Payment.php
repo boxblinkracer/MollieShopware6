@@ -2,9 +2,8 @@
 
 namespace Kiener\MolliePayments\Handler\Method;
 
-use Kiener\MolliePayments\Components\Mollie\Mollie;
-use Kiener\MolliePayments\Factory\MollieFactory;
-use Shopware\Core\Checkout\Order\Aggregate\OrderCustomer\OrderCustomerEntity;
+use Kiener\MolliePayments\Components\Configuration\PluginConfiguration;
+use Mollie\Api\MollieApiClient;
 use Shopware\Core\Checkout\Payment\Cart\AsyncPaymentTransactionStruct;
 use Shopware\Core\Checkout\Payment\Cart\PaymentHandler\AsynchronousPaymentHandlerInterface;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
@@ -16,17 +15,17 @@ class P24Payment implements AsynchronousPaymentHandlerInterface
 {
 
     /**
-     * @var MollieFactory
+     * @var PluginConfiguration
      */
-    private $mollieFactory;
+    private $configuration;
 
 
     /**
-     * @param MollieFactory $mollieFactory
+     * @param PluginConfiguration $configuration
      */
-    public function __construct(MollieFactory $mollieFactory)
+    public function __construct(PluginConfiguration $configuration)
     {
-        $this->mollieFactory = $mollieFactory;
+        $this->configuration = $configuration;
     }
 
     /**
@@ -40,19 +39,25 @@ class P24Payment implements AsynchronousPaymentHandlerInterface
     {
         $amount = $transaction->getOrder()->getAmountTotal();
 
-        $customer = $transaction->getOrder()->getOrderCustomer();
+        $params = [
+            'amount' => [
+                'value' => $this->formatValue($amount),
+                'currency' => 'EUR',
+            ],
+            'method' => 'przelewy24',
+            'redirectUrl' => 'https://mollie.com',
+            'description' => 'Shopware Order',
+        ];
 
-        $billingEmail = '';
-        if ($customer instanceof OrderCustomerEntity) {
-            $billingEmail = $customer->getEmail();
-        }
 
+        $client = new MollieApiClient();
+        $client->setApiKey($this->configuration->getApiKey());
 
-        $mollie = $this->mollieFactory->buildMollie();
+        $payment = $client->payments->create($params);
 
-        $paymentURL = $mollie->createPayment('przelewy24', $amount, $billingEmail);
+        $checkoutUrl = (string)$payment->getCheckoutUrl();
 
-        return new RedirectResponse($paymentURL);
+        return new RedirectResponse($checkoutUrl);
     }
 
     /**
@@ -63,5 +68,19 @@ class P24Payment implements AsynchronousPaymentHandlerInterface
      */
     public function finalize(AsyncPaymentTransactionStruct $transaction, Request $request, SalesChannelContext $salesChannelContext): void
     {
+    }
+
+
+    /**
+     * @param null|float $price
+     * @return string
+     */
+    public function formatValue(?float $price)
+    {
+        if (is_null($price)) {
+            $price = 0.0;
+        }
+
+        return number_format(round($price, 2), 2, '.', '');
     }
 }
