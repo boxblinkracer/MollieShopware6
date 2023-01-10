@@ -2,7 +2,7 @@
 
 namespace Kiener\MolliePayments\Components\Installer;
 
-use Kiener\MolliePayments\Handler\P24Payment;
+use Kiener\MolliePayments\Handler\Method\P24Payment;
 use Kiener\MolliePayments\MolliePayments;
 use Shopware\Core\Checkout\Payment\PaymentMethodEntity;
 use Shopware\Core\Framework\Context;
