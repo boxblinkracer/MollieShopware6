@@ -47,9 +47,7 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "MolliePayments\\Tests\\": "tests/PHPUnit/",
-            "MolliePayments\\PHPStan\\": "tests/PHPStan/",
-            "MolliePayments\\Fixtures\\": "tests/Fixtures/"
+            "Kiener\\MolliePayments\\Tests\\": "tests/PHPUnit/"
         }
     },
     "suggest": {

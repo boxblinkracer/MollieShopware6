@@ -5,6 +5,7 @@ namespace Kiener\MolliePayments\Components\Mollie;
 
 use Kiener\MolliePayments\Components\Configuration\PluginConfiguration;
 use Kiener\MolliePayments\Components\Mollie\Api\MollieApi;
+use Kiener\MolliePayments\Components\Mollie\Api\MollieApiInterface;
 use Kiener\MolliePayments\Components\Mollie\Services\NumberFormatter;
 use Mollie\Api\MollieApiClient;
 
@@ -23,12 +24,11 @@ class Mollie
 
 
     /**
-     * @param PluginConfiguration $configuration
-     * @throws \Mollie\Api\Exceptions\ApiException
+     * @param string $apiKey
      */
-    public function __construct(PluginConfiguration $configuration)
+    public function __construct(MollieApiInterface $client)
     {
-        $this->client = new MollieApi($configuration->getApiKey());
+        $this->client = $client;
 
         $this->numberFormatter = new NumberFormatter();
     }
