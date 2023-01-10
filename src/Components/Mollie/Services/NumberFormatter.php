@@ -17,5 +17,4 @@ class NumberFormatter
 
         return number_format(round($price, 2), 2, '.', '');
     }
-
 }

@@ -34,5 +34,4 @@ class MollieFactory
 
         return new Mollie($client);
     }
-
 }

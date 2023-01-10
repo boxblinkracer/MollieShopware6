@@ -3,6 +3,7 @@
 namespace Kiener\MolliePayments\Handler;
 
 use Kiener\MolliePayments\Components\Mollie\Mollie;
+use Shopware\Core\Checkout\Order\Aggregate\OrderCustomer\OrderCustomerEntity;
 use Shopware\Core\Checkout\Payment\Cart\AsyncPaymentTransactionStruct;
 use Shopware\Core\Checkout\Payment\Cart\PaymentHandler\AsynchronousPaymentHandlerInterface;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
@@ -31,13 +32,20 @@ class P24Payment implements AsynchronousPaymentHandlerInterface
      * @param AsyncPaymentTransactionStruct $transaction
      * @param RequestDataBag $dataBag
      * @param SalesChannelContext $salesChannelContext
-     * @return RedirectResponse
      * @throws \Mollie\Api\Exceptions\ApiException
+     * @return RedirectResponse
      */
     public function pay(AsyncPaymentTransactionStruct $transaction, RequestDataBag $dataBag, SalesChannelContext $salesChannelContext): RedirectResponse
     {
         $amount = $transaction->getOrder()->getAmountTotal();
-        $billingEmail = $transaction->getOrder()->getOrderCustomer()->getEmail();
+
+        $customer = $transaction->getOrder()->getOrderCustomer();
+
+        $billingEmail = '';
+        if ($customer instanceof OrderCustomerEntity) {
+            $billingEmail = $customer->getEmail();
+        }
+
 
         $paymentURL = $this->mollie->createPayment('przelewy24', $amount, $billingEmail);
 
@@ -53,5 +61,4 @@ class P24Payment implements AsynchronousPaymentHandlerInterface
     public function finalize(AsyncPaymentTransactionStruct $transaction, Request $request, SalesChannelContext $salesChannelContext): void
     {
     }
-
 }

@@ -20,7 +20,7 @@ class PluginConfigurationTest extends TestCase
 
         $mockSystemConfigService
             ->expects($this->any())
-            ->method('get')
+            ->method('getString')
             ->with($this->equalTo('MolliePayments.config.apiKey'))
             ->willReturn('fake-key');
 

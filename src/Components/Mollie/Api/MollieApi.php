@@ -5,7 +5,6 @@ namespace Kiener\MolliePayments\Components\Mollie\Api;
 use Mollie\Api\MollieApiClient;
 use Mollie\Api\Resources\Payment;
 
-
 class MollieApi implements MollieApiInterface
 {
 
@@ -25,8 +24,8 @@ class MollieApi implements MollieApiInterface
 
     /**
      * @param array<mixed> $params
-     * @return Payment
      * @throws \Mollie\Api\Exceptions\ApiException
+     * @return Payment
      */
     public function createPayment(array $params): Payment
     {
@@ -35,5 +34,4 @@ class MollieApi implements MollieApiInterface
 
         return $client->payments->create($params);
     }
-
 }

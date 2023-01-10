@@ -27,8 +27,8 @@ class MolliePayments extends Plugin
 
     /**
      * @param ActivateContext $context
-     * @return void
      * @throws \Doctrine\DBAL\Exception
+     * @return void
      */
     public function activate(ActivateContext $context): void
     {
@@ -48,5 +48,4 @@ class MolliePayments extends Plugin
 
         $installer->installPaymentMethods($context);
     }
-
 }

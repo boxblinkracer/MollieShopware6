@@ -11,6 +11,5 @@ interface MollieApiInterface
      * @param array<mixed> $params
      * @return Payment
      */
-    function createPayment(array $params): Payment;
-
+    public function createPayment(array $params): Payment;
 }
