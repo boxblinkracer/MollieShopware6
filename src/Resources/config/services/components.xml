@@ -15,9 +15,5 @@
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
         </service>
 
-        <service id="Kiener\MolliePayments\Components\Mollie\Mollie">
-            <argument type="service" id="Kiener\MolliePayments\Components\Configuration\PluginConfiguration"/>
-        </service>
-
     </services>
 </container>

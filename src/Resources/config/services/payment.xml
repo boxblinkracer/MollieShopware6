@@ -6,8 +6,8 @@
 
     <services>
 
-        <service id="Kiener\MolliePayments\Handler\P24Payment">
-            <argument type="service" id="Kiener\MolliePayments\Components\Mollie\Mollie"/>
+        <service id="Kiener\MolliePayments\Handler\Method\P24Payment">
+            <argument type="service" id="Kiener\MolliePayments\Factory\MollieFactory"/>
             <tag name="shopware.payment.method.async"/>
         </service>
 

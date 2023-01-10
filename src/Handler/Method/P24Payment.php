@@ -1,8 +1,9 @@
 <?php
 
-namespace Kiener\MolliePayments\Handler;
+namespace Kiener\MolliePayments\Handler\Method;
 
 use Kiener\MolliePayments\Components\Mollie\Mollie;
+use Kiener\MolliePayments\Factory\MollieFactory;
 use Shopware\Core\Checkout\Order\Aggregate\OrderCustomer\OrderCustomerEntity;
 use Shopware\Core\Checkout\Payment\Cart\AsyncPaymentTransactionStruct;
 use Shopware\Core\Checkout\Payment\Cart\PaymentHandler\AsynchronousPaymentHandlerInterface;
@@ -15,17 +16,17 @@ class P24Payment implements AsynchronousPaymentHandlerInterface
 {
 
     /**
-     * @var Mollie
+     * @var MollieFactory
      */
-    private $mollie;
+    private $mollieFactory;
 
 
     /**
-     * @param Mollie $mollie
+     * @param MollieFactory $mollieFactory
      */
-    public function __construct(Mollie $mollie)
+    public function __construct(MollieFactory $mollieFactory)
     {
-        $this->mollie = $mollie;
+        $this->mollieFactory = $mollieFactory;
     }
 
     /**
@@ -47,7 +48,9 @@ class P24Payment implements AsynchronousPaymentHandlerInterface
         }
 
 
-        $paymentURL = $this->mollie->createPayment('przelewy24', $amount, $billingEmail);
+        $mollie = $this->mollieFactory->buildMollie();
+
+        $paymentURL = $mollie->createPayment('przelewy24', $amount, $billingEmail);
 
         return new RedirectResponse($paymentURL);
     }
