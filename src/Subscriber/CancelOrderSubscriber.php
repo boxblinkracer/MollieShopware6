@@ -10,9 +10,11 @@ use Kiener\MolliePayments\Struct\Order\OrderAttributes;
 use Mollie\Api\Exceptions\ApiException;
 use Mollie\Api\Types\OrderStatus;
 use Psr\Log\LoggerInterface;
+use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\Api\Context\SalesChannelApiSource;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMachineTransitionActions;
 use Shopware\Core\System\StateMachine\Event\StateMachineStateChangeEvent;
+use Shopware\Storefront\Event\RouteRequest\CancelOrderRouteRequestEvent;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 class CancelOrderSubscriber implements EventSubscriberInterface
@@ -69,6 +71,7 @@ class CancelOrderSubscriber implements EventSubscriberInterface
     {
         return [
             'state_machine.order.state_changed' => ['onOrderStateChanges'],
+            CancelOrderRouteRequestEvent::class => ['onAccountOrderCancelledRoute'],
         ];
     }
 
@@ -101,41 +104,7 @@ class CancelOrderSubscriber implements EventSubscriberInterface
 
             // -----------------------------------------------------------------------------------------------------------------------
 
-            // check if we have activated this feature in our plugin configuration
-            $settings = $this->settingsService->getSettings($order->getSalesChannelId());
-
-            if (! $settings->isAutomaticCancellation()) {
-                return;
-            }
-
-            // -----------------------------------------------------------------------------------------------------------------------
-
-            $orderAttributes = new OrderAttributes($order);
-
-            $mollieOrderId = $orderAttributes->getMollieOrderId();
-
-            // if we don't have a Mollie Order ID continue
-            // this can also happen for subscriptions where we only have a tr_xxx Transaction ID.
-            // but cancellation only works on orders anyway
-            if (empty($mollieOrderId)) {
-                return;
-            }
-
-            // -----------------------------------------------------------------------------------------------------------------------
-
-            $apiClient = $this->apiFactory->getClient($order->getSalesChannelId());
-
-            $mollieOrder = $apiClient->orders->get($mollieOrderId);
-
-            // check if the status of the Mollie order allows
-            // a cancellation based on our whitelist.
-            if (in_array($mollieOrder->status, self::ALLOWED_CANCELLABLE_MOLLIE_STATES, true)) {
-                $this->logger->debug('Starting auto-cancellation of order: ' . $order->getOrderNumber() . ', ' . $mollieOrderId);
-
-                $apiClient->orders->cancel($mollieOrderId);
-
-                $this->logger->info('Auto-cancellation of order: ' . $order->getOrderNumber() . ', ' . $mollieOrderId . ' successfully executed after transition: ' . $transitionName);
-            }
+            $this->cancelOrder($order, 'state-machine');
         } catch (ApiException $e) {
             $this->logger->error(
                 'Error when executing auto-cancellation of an order after transition: ' . $transitionName,
@@ -144,5 +113,77 @@ class CancelOrderSubscriber implements EventSubscriberInterface
                 ]
             );
         }
+    }
+
+    /**
+     * This function is called when the customer clicks on the "Cancel Order" button in the account/orders.
+     * This means the customer wants to force cancelling the order.
+     * If the automatic cancellation is enabled, we will cancel the order in Mollie too.
+     */
+    public function onAccountOrderCancelledRoute(CancelOrderRouteRequestEvent $event): void
+    {
+        try {
+            $apiSource = $event->getContext()->getSource();
+
+            if ($apiSource instanceof SalesChannelApiSource) {
+                $request = $event->getStoreApiRequest();
+                $scope = 'storefront';
+            } else {
+                $request = $event->getStorefrontRequest();
+                $scope = 'store-api';
+            }
+
+            $orderId = $request->get('orderId');
+
+            $order = $this->orderService->getOrder($orderId, $event->getContext());
+
+            $this->cancelOrder($order, $scope);
+        } catch (\Throwable $ex) {
+            $this->logger->error(
+                'Error when executing auto-cancellation of an order after CancelOrderRouteRequestEvent',
+                [
+                    'error' => $ex,
+                ]
+            );
+        }
+    }
+
+    /**
+     * @throws ApiException
+     */
+    private function cancelOrder(OrderEntity $order, string $scope): void
+    {
+        // check if we have activated this feature in our plugin configuration
+        $settings = $this->settingsService->getSettings($order->getSalesChannelId());
+
+        if (! $settings->isAutomaticCancellation()) {
+            return;
+        }
+
+        $orderAttributes = new OrderAttributes($order);
+
+        $mollieOrderId = $orderAttributes->getMollieOrderId();
+
+        // if we don't have a Mollie Order ID continue
+        // this can also happen for subscriptions where we only have a tr_xxx Transaction ID.
+        // but cancellation only works on orders anyway
+        if (empty($mollieOrderId)) {
+            return;
+        }
+
+        $apiClient = $this->apiFactory->getClient($order->getSalesChannelId());
+
+        $mollieOrder = $apiClient->orders->get($mollieOrderId);
+
+        if (! in_array($mollieOrder->status, self::ALLOWED_CANCELLABLE_MOLLIE_STATES, true)) {
+            $this->logger->debug('Skipping auto-cancellation of order: ' . $order->getOrderNumber() . ', ' . $mollieOrderId . '. Scope: ' . $scope);
+            return;
+        }
+
+        $this->logger->debug('Starting auto-cancellation of order: ' . $order->getOrderNumber() . ', ' . $mollieOrderId . '. Scope: ' . $scope);
+
+        $apiClient->orders->cancel($mollieOrderId);
+
+        $this->logger->info('Auto-cancellation of order: ' . $order->getOrderNumber() . ', ' . $mollieOrderId . ' successfully executed. Scope: ' . $scope);
     }
 }
